@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Party Color Picker with Long Press</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    margin: 0;
+    padding: 1rem;
+    background: #f9f9f9;
+    color: #222;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  h1 {
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  /* Buttons container */
+  #upload-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  label.upload-btn {
+    background-color: #007bff;
+    color: white;
+    padding: 0.6rem 1.2rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    user-select: none;
+    display: inline-block;
+    min-width: 140px;
+    text-align: center;
+  }
+  label.upload-btn:hover {
+    background-color: #0056b3;
+  }
+  input[type="file"] {
+    display: none;
+  }
+
+  #image-container {
+    position: relative;
+    max-width: 90vw;
+    max-height: 60vh;
+    margin-bottom: 1rem;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
+    touch-action: none; /* disable default touch scrolling */
+  }
+  #uploaded-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    user-select: none;
+    cursor: pointer;
+	
+    /* Disable text selection and long press context menu */
+    -webkit-user-select: none;      /* Safari */
+    -webkit-touch-callout: none;    /* iOS Safari */
+    user-select: none;
+    touch-action: none;             /* Disable default touch gestures */
+  }
+  #preview-color {
+    position: fixed;
+    pointer-events: none;
+    width: 40px;
+    height: 40px;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(0,0,0,0.3);
+    transform: translate(-50%, -50%);
+    display: none;
+    z-index: 10;
+  }
+  #colors-display {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .color-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  .color-swatch {
+    width: 60px;
+    height: 60px;
+    border: 2px solid #222;
+    border-radius: 8px;
+    margin-top: 0.4rem;
+    box-sizing: border-box;
+  }
+  #result-message {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #900;
+    margin-bottom: 1rem;
+  }
+  #party-info {
+    text-align: center;
+    max-width: 90vw;
+  }
+  #party-name {
+    font-weight: 700;
+    font-size: 1.4rem;
+    margin-bottom: 0.25rem;
+  }
+  #party-image {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    object-fit: contain;
+  }
+  @media (max-width: 400px) {
+    #party-image {
+      max-width: 150px;
+      max-height: 150px;
+    }
+  }
+</style>
+</head>
+<body>
+  <h1>Party Color Picker</h1>
+
+  <div id="upload-buttons">
+    <label class="upload-btn" for="take-photo-input">📷 Take Photo</label>
+    <input type="file" id="take-photo-input" accept="image/*" capture="environment" />
+    
+    <label class="upload-btn" for="choose-photo-input">🖼️ Choose from Library</label>
+    <input type="file" id="choose-photo-input" accept="image/*" />
+  </div>
+
+  <div id="image-container" aria-label="Uploaded image container">
+    <canvas id="canvas" style="display:none;"></canvas>
+    <img id="uploaded-image" alt="Uploaded" />
+  </div>
+
+  <div id="colors-display" aria-live="polite" aria-atomic="true">
+    <div class="color-block" id="chosen-color-block" style="visibility:hidden;">
+      <div>Chosen Color</div>
+      <div class="color-swatch" id="chosen-color"></div>
+    </div>
+    <div class="color-block" id="closest-color-block" style="visibility:hidden;">
+      <div>Closest Color</div>
+      <div class="color-swatch" id="closest-color"></div>
+    </div>
+  </div>
+
+  <div id="result-message" aria-live="polite"></div>
+
+  <div id="party-info" aria-live="polite">
+    <div id="party-name"></div>
+    <img id="party-image" alt="Party logo" />
+  </div>
+
+  <div id="preview-color" aria-hidden="true"></div>
+
+<script>
+  // === CONFIG ===
+  const threshold_of_colour_similarity = 50;
+
+  // === PARTY DATA ===
+  const party_list = [
+    ["Name","Code","Image"],
+    ["民建聯","1862AD","民建聯.svg"],
+    ["民主黨","5FB04A","民主黨.svg"],
+    ["公民黨","7d4199","公民黨.svg"],
+    ["經民聯","77CAEC","經民聯.svg"],
+    ["工聯會","FE0000","工聯會.svg"],
+    ["自由黨","00ADEF","自由黨.svg"],
+    ["新民黨","1B8BCD","新民黨.svg"],
+    ["工黨","F7941D","工黨.svg"],
+    ["街工","FFE681","街工.svg"],
+    ["民協","FAF400","民協.svg"],
+    ["社民連","E0050D","社民連.svg"],
+    ["人民力量","FCD12C","人民力量.svg"],
+    ["新民主同盟","F9B924","新民主同盟.svg"],
+    ["熱血公民","FDD402","熱血公民.svg"],
+    ["香港眾志","38C7B2","香港眾志.png"],
+    ["青年新政","F17A41","青年新政.png"],
+    ["本民前","2A3687","本民前.webp"],
+    ["西九新動力","B6C85A","西九新動力.svg"],
+    ["新思維","009591","新思維.jpg"],
+    ["民主思路","BF3673","民主思路.png"],
+    ["職工盟","148F3F","職工盟.svg"],
+    ["前綫","FFD801","前綫.png"],
+    ["匯點","007804","匯點.png"],
+    ["港同盟","0A6C55","港同盟.png"]
+  ];
+  const parties = party_list.slice(1).map(row => ({
+    name: row[0],
+    code: row[1].toUpperCase(),
+    image: row[2]
+  }));
+
+  // === DOM ===
+  const takePhotoInput = document.getElementById('take-photo-input');
+  const choosePhotoInput = document.getElementById('choose-photo-input');
+  const uploadedImage = document.getElementById('uploaded-image');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  const chosenColorBlock = document.getElementById('chosen-color-block');
+  const closestColorBlock = document.getElementById('closest-color-block');
+  const chosenColorDiv = document.getElementById('chosen-color');
+  const closestColorDiv = document.getElementById('closest-color');
+
+  const resultMessage = document.getElementById('result-message');
+  const partyNameDiv = document.getElementById('party-name');
+  const partyImage = document.getElementById('party-image');
+
+  const previewColorDiv = document.getElementById('preview-color');
+  const imageContainer = document.getElementById('image-container');
+
+  let imgNaturalWidth = 0;
+  let imgNaturalHeight = 0;
+
+  // === HELPERS ===
+  function hexToRgb(hex) {
+    const bigint = parseInt(hex, 16);
+    return {
+      r: (bigint >> 16) & 255,
+      g: (bigint >> 8) & 255,
+      b: bigint & 255
+    };
+  }
+
+  function colorDistance(c1, c2) {
+    return Math.sqrt(
+      Math.pow(c1.r - c2.r, 2) +
+      Math.pow(c1.g - c2.g, 2) +
+      Math.pow(c1.b - c2.b, 2)
+    );
+  }
+
+  function findClosestParty(rgb) {
+    let minDist = Infinity;
+    let closestParty = null;
+    for (const party of parties) {
+      const partyRgb = hexToRgb(party.code);
+      const dist = colorDistance(rgb, partyRgb);
+      if (dist < minDist) {
+        minDist = dist;
+        closestParty = party;
+      }
+    }
+    if (minDist <= threshold_of_colour_similarity) {
+      return closestParty;
+    }
+    return null;
+  }
+
+  function rgbToHex(r, g, b) {
+    return "#" + [r, g, b].map(x => {
+      const hex = x.toString(16);
+      return hex.length === 1 ? "0" + hex : hex;
+    }).join('');
+  }
+
+  function resetDisplay() {
+    chosenColorBlock.style.visibility = 'hidden';
+    closestColorBlock.style.visibility = 'hidden';
+    resultMessage.textContent = '';
+    partyNameDiv.textContent = '';
+    partyImage.src = '';
+    partyImage.alt = '';
+  }
+
+  // Load image from input
+  function handleImageFile(file) {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    uploadedImage.src = url;
+    resetDisplay();
+  }
+
+  takePhotoInput.addEventListener('change', e => {
+    handleImageFile(e.target.files[0]);
+  });
+  choosePhotoInput.addEventListener('change', e => {
+    handleImageFile(e.target.files[0]);
+  });
+
+  uploadedImage.addEventListener('load', () => {
+    imgNaturalWidth = uploadedImage.naturalWidth;
+    imgNaturalHeight = uploadedImage.naturalHeight;
+
+    canvas.width = imgNaturalWidth;
+    canvas.height = imgNaturalHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(uploadedImage, 0, 0, imgNaturalWidth, imgNaturalHeight);
+  });
+
+  // === LONG PRESS COLOR PICKING ===
+  let pointerDownTime = 0;
+  let pointerDownPos = null;
+  let longPressTimeout = null;
+  let isLongPressActive = false;
+
+  function getImageCoordinates(e) {
+    const rect = uploadedImage.getBoundingClientRect();
+    const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
+    if (clientX === undefined || clientY === undefined) return null;
+
+    const clickX = clientX - rect.left;
+    const clickY = clientY - rect.top;
+
+    if (clickX < 0 || clickY < 0 || clickX > rect.width || clickY > rect.height) return null;
+
+    const scaleX = imgNaturalWidth / rect.width;
+    const scaleY = imgNaturalHeight / rect.height;
+
+    const imgX = Math.floor(clickX * scaleX);
+    const imgY = Math.floor(clickY * scaleY);
+
+    if (imgX < 0 || imgY < 0 || imgX >= imgNaturalWidth || imgY >= imgNaturalHeight) return null;
+
+    return { imgX, imgY, clientX, clientY };
+  }
+
+  function showPreviewColor(r, g, b, x, y) {
+    previewColorDiv.style.backgroundColor = `rgb(${r},${g},${b})`;
+    previewColorDiv.style.left = `${x}px`;
+    previewColorDiv.style.top = `${y}px`;
+    previewColorDiv.style.display = 'block';
+  }
+
+  function hidePreviewColor() {
+    previewColorDiv.style.display = 'none';
+  }
+
+  function getPixelColor(x, y) {
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    return pixel;
+  }
+
+  function onPointerDown(e) {
+    if (!imgNaturalWidth || !imgNaturalHeight) return;
+
+    e.preventDefault();
+    pointerDownTime = Date.now();
+    pointerDownPos = getImageCoordinates(e);
+    if (!pointerDownPos) return;
+
+    isLongPressActive = false;
+
+    longPressTimeout = setTimeout(() => {
+      isLongPressActive = true;
+      updatePreviewColor(pointerDownPos);
+    }, 500);
+  }
+
+  function onPointerMove(e) {
+    if (!isLongPressActive) return;
+    e.preventDefault();
+    const pos = getImageCoordinates(e);
+    if (!pos) return;
+    updatePreviewColor(pos);
+  }
+
+  function updatePreviewColor(pos) {
+    const [r, g, b, a] = getPixelColor(pos.imgX, pos.imgY);
+    if (a === 0) {
+      hidePreviewColor();
+      return;
+    }
+    showPreviewColor(r, g, b, pos.clientX, pos.clientY);
+  }
+
+  function onPointerUp(e) {
+    clearTimeout(longPressTimeout);
+
+    if (!isLongPressActive) {
+      return;
+    }
+
+    e.preventDefault();
+    hidePreviewColor();
+
+    const pos = getImageCoordinates(e);
+    if (!pos) {
+      resetDisplay();
+      return;
+    }
+
+    const [r, g, b, a] = getPixelColor(pos.imgX, pos.imgY);
+    if (a === 0) {
+      resetDisplay();
+      resultMessage.textContent = 'Clicked on transparent pixel, try another spot.';
+      return;
+    }
+
+    const chosenRgb = { r, g, b };
+    const chosenHex = rgbToHex(r, g, b);
+
+    chosenColorDiv.style.backgroundColor = chosenHex;
+    chosenColorBlock.style.visibility = 'visible';
+
+    const closestParty = findClosestParty(chosenRgb);
+
+    if (!closestParty) {
+      closestColorBlock.style.visibility = 'hidden';
+      partyNameDiv.textContent = '';
+      partyImage.src = '';
+      partyImage.alt = '';
+      resultMessage.textContent = 'No result is matched';
+    } else {
+      const closestRgb = hexToRgb(closestParty.code);
+      const closestHex = `#${closestParty.code}`;
+
+      closestColorDiv.style.backgroundColor = closestHex;
+      closestColorBlock.style.visibility = 'visible';
+
+      partyNameDiv.textContent = closestParty.name;
+      partyImage.src = `party_images/${closestParty.image}`;
+      partyImage.alt = `${closestParty.name} logo`;
+      resultMessage.textContent = '';
+    }
+  }
+
+  function onPointerCancel(e) {
+    clearTimeout(longPressTimeout);
+    hidePreviewColor();
+  }
+
+  uploadedImage.addEventListener('pointerdown', onPointerDown);
+  uploadedImage.addEventListener('pointermove', onPointerMove);
+  uploadedImage.addEventListener('pointerup', onPointerUp);
+  uploadedImage.addEventListener('pointercancel', onPointerCancel);
+  uploadedImage.addEventListener('pointerleave', onPointerCancel);
+
+  imageContainer.addEventListener('touchmove', e => {
+    if (isLongPressActive) e.preventDefault();
+  }, { passive: false });
+
+  // Prevent context menu on long press (disable save image menu on mobile)
+  uploadedImage.addEventListener('contextmenu', e => e.preventDefault());
+
+</script>
+</body>
+</html>
