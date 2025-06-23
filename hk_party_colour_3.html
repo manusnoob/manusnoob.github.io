@@ -21,22 +21,35 @@
     margin-bottom: 1rem;
     text-align: center;
   }
-  #upload-label {
+
+  /* Buttons container */
+  #upload-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  label.upload-btn {
     background-color: #007bff;
     color: white;
     padding: 0.6rem 1.2rem;
     border-radius: 5px;
     cursor: pointer;
     font-weight: 600;
-    margin-bottom: 1rem;
+    user-select: none;
     display: inline-block;
+    min-width: 140px;
+    text-align: center;
   }
-  #upload-label:hover {
+  label.upload-btn:hover {
     background-color: #0056b3;
   }
   input[type="file"] {
     display: none;
   }
+
   #image-container {
     position: relative;
     max-width: 90vw;
@@ -54,7 +67,7 @@
     user-select: none;
     cursor: pointer;
 	
-	/* Disable text selection and long press context menu */
+    /* Disable text selection and long press context menu */
     -webkit-user-select: none;      /* Safari */
     -webkit-touch-callout: none;    /* iOS Safari */
     user-select: none;
@@ -127,8 +140,14 @@
 </head>
 <body>
   <h1>Party Color Picker</h1>
-  <label id="upload-label" for="image-upload">Upload or Take Photo</label>
-  <input type="file" id="image-upload" accept="image/*" capture="environment" />
+
+  <div id="upload-buttons">
+    <label class="upload-btn" for="take-photo-input">📷 Take Photo</label>
+    <input type="file" id="take-photo-input" accept="image/*" capture="environment" />
+    
+    <label class="upload-btn" for="choose-photo-input">🖼️ Choose from Library</label>
+    <input type="file" id="choose-photo-input" accept="image/*" />
+  </div>
 
   <div id="image-container" aria-label="Uploaded image container">
     <canvas id="canvas" style="display:none;"></canvas>
@@ -157,8 +176,7 @@
 
 <script>
   // === CONFIG ===
-  // Max Euclidean RGB distance for a color to be considered a match
-  const threshold_of_colour_similarity = 50;
+  const threshold_of_colour_similarity = 100;
 
   // === PARTY DATA ===
   const party_list = [
@@ -194,8 +212,9 @@
     image: row[2]
   }));
 
-  // === DOM ELEMENTS ===
-  const imageUpload = document.getElementById('image-upload');
+  // === DOM ===
+  const takePhotoInput = document.getElementById('take-photo-input');
+  const choosePhotoInput = document.getElementById('choose-photo-input');
   const uploadedImage = document.getElementById('uploaded-image');
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
@@ -215,9 +234,7 @@
   let imgNaturalWidth = 0;
   let imgNaturalHeight = 0;
 
-  // === HELPER FUNCTIONS ===
-
-  // Hex to RGB object
+  // === HELPERS ===
   function hexToRgb(hex) {
     const bigint = parseInt(hex, 16);
     return {
@@ -227,7 +244,6 @@
     };
   }
 
-  // RGB distance (Euclidean)
   function colorDistance(c1, c2) {
     return Math.sqrt(
       Math.pow(c1.r - c2.r, 2) +
@@ -236,7 +252,6 @@
     );
   }
 
-  // Find closest party color within threshold
   function findClosestParty(rgb) {
     let minDist = Infinity;
     let closestParty = null;
@@ -254,7 +269,6 @@
     return null;
   }
 
-  // Convert RGB to hex string (for CSS)
   function rgbToHex(r, g, b) {
     return "#" + [r, g, b].map(x => {
       const hex = x.toString(16);
@@ -262,7 +276,6 @@
     }).join('');
   }
 
-  // Reset display
   function resetDisplay() {
     chosenColorBlock.style.visibility = 'hidden';
     closestColorBlock.style.visibility = 'hidden';
@@ -272,16 +285,21 @@
     partyImage.alt = '';
   }
 
-  // === IMAGE UPLOAD HANDLER ===
-  imageUpload.addEventListener('change', () => {
-    const file = imageUpload.files[0];
+  // Load image from input
+  function handleImageFile(file) {
     if (!file) return;
     const url = URL.createObjectURL(file);
     uploadedImage.src = url;
     resetDisplay();
+  }
+
+  takePhotoInput.addEventListener('change', e => {
+    handleImageFile(e.target.files[0]);
+  });
+  choosePhotoInput.addEventListener('change', e => {
+    handleImageFile(e.target.files[0]);
   });
 
-  // When image loads, update canvas size to natural image size and draw image
   uploadedImage.addEventListener('load', () => {
     imgNaturalWidth = uploadedImage.naturalWidth;
     imgNaturalHeight = uploadedImage.naturalHeight;
@@ -293,14 +311,11 @@
   });
 
   // === LONG PRESS COLOR PICKING ===
-
-  // Variables for long press detection
   let pointerDownTime = 0;
   let pointerDownPos = null;
   let longPressTimeout = null;
   let isLongPressActive = false;
 
-  // Get image coordinate from pointer event
   function getImageCoordinates(e) {
     const rect = uploadedImage.getBoundingClientRect();
     const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
@@ -323,7 +338,6 @@
     return { imgX, imgY, clientX, clientY };
   }
 
-  // Show preview color circle
   function showPreviewColor(r, g, b, x, y) {
     previewColorDiv.style.backgroundColor = `rgb(${r},${g},${b})`;
     previewColorDiv.style.left = `${x}px`;
@@ -331,18 +345,15 @@
     previewColorDiv.style.display = 'block';
   }
 
-  // Hide preview color circle
   function hidePreviewColor() {
     previewColorDiv.style.display = 'none';
   }
 
-  // Get pixel color at image coords
   function getPixelColor(x, y) {
     const pixel = ctx.getImageData(x, y, 1, 1).data;
     return pixel;
   }
 
-  // Handle pointer down: start long press timer
   function onPointerDown(e) {
     if (!imgNaturalWidth || !imgNaturalHeight) return;
 
@@ -351,16 +362,14 @@
     pointerDownPos = getImageCoordinates(e);
     if (!pointerDownPos) return;
 
-    isLongPressActive = false; // will become true after timeout
+    isLongPressActive = false;
 
     longPressTimeout = setTimeout(() => {
       isLongPressActive = true;
-      // Start preview at pointer down pos
       updatePreviewColor(pointerDownPos);
-    }, 500); // 500ms for long press
+    }, 500);
   }
 
-  // Handle pointer move: update preview if long press active
   function onPointerMove(e) {
     if (!isLongPressActive) return;
     e.preventDefault();
@@ -369,23 +378,19 @@
     updatePreviewColor(pos);
   }
 
-  // Update preview color at given position
   function updatePreviewColor(pos) {
     const [r, g, b, a] = getPixelColor(pos.imgX, pos.imgY);
     if (a === 0) {
-      // Transparent pixel - show no preview color
       hidePreviewColor();
       return;
     }
     showPreviewColor(r, g, b, pos.clientX, pos.clientY);
   }
 
-  // Handle pointer up: if long press was active, finalize color pick
   function onPointerUp(e) {
     clearTimeout(longPressTimeout);
 
     if (!isLongPressActive) {
-      // Not a long press, ignore
       return;
     }
 
@@ -400,7 +405,6 @@
 
     const [r, g, b, a] = getPixelColor(pos.imgX, pos.imgY);
     if (a === 0) {
-      // Transparent pixel clicked
       resetDisplay();
       resultMessage.textContent = 'Clicked on transparent pixel, try another spot.';
       return;
@@ -409,11 +413,9 @@
     const chosenRgb = { r, g, b };
     const chosenHex = rgbToHex(r, g, b);
 
-    // Show chosen color
     chosenColorDiv.style.backgroundColor = chosenHex;
     chosenColorBlock.style.visibility = 'visible';
 
-    // Find closest party color
     const closestParty = findClosestParty(chosenRgb);
 
     if (!closestParty) {
@@ -436,20 +438,17 @@
     }
   }
 
-  // Handle pointer cancel or leave: cancel preview & reset
   function onPointerCancel(e) {
     clearTimeout(longPressTimeout);
     hidePreviewColor();
   }
 
-  // === ATTACH POINTER EVENTS ===
   uploadedImage.addEventListener('pointerdown', onPointerDown);
   uploadedImage.addEventListener('pointermove', onPointerMove);
   uploadedImage.addEventListener('pointerup', onPointerUp);
   uploadedImage.addEventListener('pointercancel', onPointerCancel);
   uploadedImage.addEventListener('pointerleave', onPointerCancel);
 
-  // Prevent scrolling on touch devices when interacting with image
   imageContainer.addEventListener('touchmove', e => {
     if (isLongPressActive) e.preventDefault();
   }, { passive: false });
