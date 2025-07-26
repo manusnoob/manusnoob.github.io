@@ -1,9 +1,9 @@
 [
-  // MasterTicket (MT)
+  { "_comment": "MasterTicket (MT)" }, 
   { "name": "MasterTicket Dashboard", "url": "/dashboard.html" },
   { "name": "MasterTicket Dashboard Mobile Small", "url": "/mt_dash_m_s.html" },
   { "name": "MasterTicket Dashboard Mobile Small (Viewport Tag Added)", "url": "/mt_dash_m_s_vp.html" },
 
-  // HPC (Hk Party Colour) - keep only the latest version
+  { "_comment": "HKHPC (Hk Party Colour) - keep only the latest version" }, 
   { "name": "HK Party Colour 7", "url": "/hpc_7.html" },
 ]
