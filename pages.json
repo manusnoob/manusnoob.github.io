@@ -1,13 +1,9 @@
 [
-  { "name": "Dashboard", "url": "/dashboard.html" },
-  { "name": "Hk Party Colour", "url": "/hk_party_colour.html" },
-  { "name": "Hk Party Colour 1", "url": "/hk_party_colour_1.html" },
-  { "name": "Hk Party Colour 2", "url": "/hk_party_colour_2.html" },
-  { "name": "Hk Party Colour 3", "url": "/hk_party_colour_3.html" },
-  { "name": "Hpc 4", "url": "/hpc_4.html" },
-  { "name": "Hpc 5", "url": "/hpc_5.html" },
-  { "name": "Hpc 6", "url": "/hpc_6.html" },
-  { "name": "Hpc 7", "url": "/hpc_7.html" },
-  { "name": "Mt Dash M S", "url": "/mt_dash_m_s.html" },
-  { "name": "Mt Dash M S Vp", "url": "/mt_dash_m_s_vp.html" }
+  // MasterTicket (MT)
+  { "name": "MasterTicket Dashboard", "url": "/dashboard.html" },
+  { "name": "MasterTicket Dashboard Mobile Small", "url": "/mt_dash_m_s.html" },
+  { "name": "MasterTicket Dashboard Mobile Small (Viewport Tag Added)", "url": "/mt_dash_m_s_vp.html" },
+
+  // HPC (Hk Party Colour) - keep only the latest version
+  { "name": "HK Party Colour 7", "url": "/hpc_7.html" },
 ]
