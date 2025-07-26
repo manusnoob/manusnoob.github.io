@@ -6,4 +6,9 @@
 
   { "_comment": "HKHPC (Hk Party Colour) - keep only the latest version" }, 
   { "name": "HK Party Colour 7", "url": "/hpc_7.html" },
+
+  { "_comment": "Others" }, 
+  { "name": "Clipboard Copy & Paste Demo", "url": "/clipboard_copy_and_paste_demo.html" },
+
+  
 ]
