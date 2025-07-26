@@ -58,40 +58,43 @@
     <p id="error" role="alert" style="display:none;"></p>
   </main>
 
-  <script>
-    async function loadPages() {
-      const linksContainer = document.getElementById('links');
-      const errorMsg = document.getElementById('error');
+<script>
+  async function loadPages() {
+    const linksContainer = document.getElementById('links');
+    const errorMsg = document.getElementById('error');
 
-      try {
-        const response = await fetch('pages.json');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    try {
+      const response = await fetch('pages.json');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-        const pages = await response.json();
+      const pages = await response.json();
 
-        if (!Array.isArray(pages) || pages.length === 0) {
-          linksContainer.innerHTML = '<li>No pages found.</li>';
-          return;
-        }
-
-        for (const page of pages) {
-          const li = document.createElement('li');
-          const a = document.createElement('a');
-          a.href = page.url;
-          a.textContent = page.name;
-          a.setAttribute('target', '_self'); // open in same tab
-          a.setAttribute('rel', 'noopener noreferrer');
-          li.appendChild(a);
-          linksContainer.appendChild(li);
-        }
-      } catch (err) {
-        console.error('Failed to load pages.json:', err);
-        errorMsg.textContent = 'Failed to load page links. Please try again later.';
-        errorMsg.style.display = 'block';
+      if (!Array.isArray(pages) || pages.length === 0) {
+        linksContainer.innerHTML = '<li>No pages found.</li>';
+        return;
       }
-    }
 
-    document.addEventListener('DOMContentLoaded', loadPages);
-  </script>
+      for (const page of pages) {
+        if (page._comment) continue; // skip comments
+        if (!page.name || !page.url) continue; // skip invalid entries
+
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = page.url;
+        a.textContent = page.name;
+        a.setAttribute('target', '_self');
+        a.setAttribute('rel', 'noopener noreferrer');
+        li.appendChild(a);
+        linksContainer.appendChild(li);
+      }
+    } catch (err) {
+      console.error('Failed to load pages.json:', err);
+      errorMsg.textContent = 'Failed to load page links. Please try again later.';
+      errorMsg.style.display = 'block';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadPages);
+</script>
 </body>
 </html>
