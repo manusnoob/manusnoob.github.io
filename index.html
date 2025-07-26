@@ -2,34 +2,96 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Main Page</title>
+  <style>
+    /* Simple modern styles */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+        Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      margin: 2rem;
+      background: #f9fafb;
+      color: #333;
+    }
+    h1 {
+      font-weight: 700;
+      font-size: 2rem;
+      margin-bottom: 1.5rem;
+      color: #1f2937;
+    }
+    ul#links {
+      list-style: none;
+      padding: 0;
+      max-width: 400px;
+      margin: 0;
+    }
+    ul#links li {
+      margin-bottom: 1rem;
+    }
+    ul#links a {
+      text-decoration: none;
+      color: #2563eb;
+      font-size: 1.125rem;
+      padding: 0.5rem 1rem;
+      border: 2px solid #2563eb;
+      border-radius: 6px;
+      display: inline-block;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    ul#links a:hover,
+    ul#links a:focus {
+      background-color: #2563eb;
+      color: white;
+      outline: none;
+    }
+    #error {
+      color: #dc2626;
+      font-weight: 600;
+      margin-top: 1rem;
+    }
+  </style>
 </head>
 <body>
-  <h1>Main Page</h1>
-  <ul id="links"></ul>
+  <main>
+    <h1>Main Page</h1>
+    <ul id="links" aria-live="polite" aria-label="List of subpages"></ul>
+    <p id="error" role="alert" style="display:none;"></p>
+  </main>
 
   <script>
-    fetch('pages.json')
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to fetch pages.json');
-        return response.json();
-      })
-      .then(pages => {
-        const ul = document.getElementById('links');
-        pages.forEach(page => {
+    async function loadPages() {
+      const linksContainer = document.getElementById('links');
+      const errorMsg = document.getElementById('error');
+
+      try {
+        const response = await fetch('pages.json');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const pages = await response.json();
+
+        if (!Array.isArray(pages) || pages.length === 0) {
+          linksContainer.innerHTML = '<li>No pages found.</li>';
+          return;
+        }
+
+        for (const page of pages) {
           const li = document.createElement('li');
           const a = document.createElement('a');
           a.href = page.url;
           a.textContent = page.name;
+          a.setAttribute('target', '_self'); // open in same tab
+          a.setAttribute('rel', 'noopener noreferrer');
           li.appendChild(a);
-          ul.appendChild(li);
-        });
-      })
-      .catch(err => {
-        console.error(err);
-        const ul = document.getElementById('links');
-        ul.innerHTML = '<li>Failed to load pages.</li>';
-      });
+          linksContainer.appendChild(li);
+        }
+      } catch (err) {
+        console.error('Failed to load pages.json:', err);
+        errorMsg.textContent = 'Failed to load page links. Please try again later.';
+        errorMsg.style.display = 'block';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadPages);
   </script>
 </body>
 </html>
